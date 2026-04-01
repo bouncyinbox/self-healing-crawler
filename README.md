@@ -193,85 +193,136 @@ At a 95% cache hit rate across 10,000 daily crawls:
 
 ## Setup
 
-### Prerequisites
+### What you need
 
-- Python 3.9+
-- An [Anthropic API key](https://console.anthropic.com/)
+| Requirement | Why | Where to get it |
+|---|---|---|
+| Python 3.9+ | Runtime | [python.org](https://www.python.org/downloads/) |
+| Anthropic API key | Powers LLM extraction and selector generation | [console.anthropic.com](https://console.anthropic.com/) |
+| Chromium (via Playwright) | Renders JS-heavy pages for real-URL crawling | Installed automatically — see step 3 below |
 
-### Install
+> **No API key?** The demo still runs — change detection, caching, and CSS extraction all work. LLM extraction is skipped and all product fields will be null. To see the full self-healing loop you need the key.
+
+---
+
+### Step 1 — Clone and install
 
 ```bash
-# Clone
 git clone https://github.com/bouncyinbox/self-healing-crawler.git
 cd self-healing-crawler
 
-# Install (editable with dev dependencies)
+# Install the package and all dependencies (including dev/test tools)
 pip install -e ".[dev]"
-
-# Install Playwright browser
-playwright install chromium
-
-# Configure
-cp .env.example .env
-# Edit .env and set ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+This installs: `anthropic`, `pydantic`, `pydantic-settings`, `playwright`, `beautifulsoup4`, `lxml`, `aiosqlite`, `imagehash`, `click`, `rich`, and test tools (`pytest`, `pytest-asyncio`, `pytest-mock`).
+
+### Step 2 — Set your API key
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+```
+
+Get a key at [console.anthropic.com](https://console.anthropic.com/) → API Keys → Create Key. The demo uses `claude-sonnet-4-6` and consumes ~600–1200 tokens per LLM extraction (roughly $0.003–0.006 per run).
+
+### Step 3 — Install the browser (only needed for live URLs)
+
+```bash
+playwright install chromium
+```
+
+This downloads a ~120 MB Chromium binary. It is **only required** if you plan to crawl live URLs (`crawler crawl <url>`). The demo and local file commands (`crawler demo`, `crawler local`) do not use the browser.
+
+---
 
 ### Run the demo
 
 ```bash
-# Full 4-step self-healing demonstration
 python main.py demo
-
-# Or via the installed CLI entry point
-crawler demo
 ```
 
-The demo runs 4 crawls:
-1. **First visit** (v1 page) → LLM extracts + caches selectors
-2. **Second visit** (same v1 page) → Cache hit, zero LLM tokens
-3. **Redesigned page** (v2 page, same URL) → Drift detected, cache invalidated, LLM re-extracts
-4. **Revisit redesigned page** → Cache hit with new selectors
+This runs 4 crawls against the two bundled mock HTML files (`product_v1.html` and `product_v2.html`) — no browser, no network, no extra setup needed beyond Step 1 and 2.
+
+**What each run does:**
+
+| Run | HTML served | What happens |
+|---|---|---|
+| 1 | `product_v1.html` | No cache → LLM extracts product data + generates CSS selectors → selectors cached |
+| 2 | `product_v1.html` | Cache hit → fast CSS extraction, 0 LLM tokens used |
+| 3 | `product_v2.html` (same URL) | Drift detected (IDs removed, class names changed) → cache invalidated → LLM re-extracts with new selectors |
+| 4 | `product_v2.html` | Cache hit with new selectors → fast extraction again |
+
+**Expected output (with API key set):**
+
+```
+RUN 1  method=LLM_EXTRACTION   cache_hit=NO   drift=NONE      confidence=100%
+RUN 2  method=CACHE_HIT        cache_hit=YES  drift=NONE      confidence=100%  tokens=0
+RUN 3  method=LLM_EXTRACTION   cache_hit=NO   drift=DETECTED  confidence=100%
+RUN 4  method=CACHE_HIT        cache_hit=YES  drift=NONE      confidence=100%  tokens=0
+```
+
+**Without API key:** All runs show `method=NO_EXTRACTOR` and null product fields. The drift detection still fires on RUN 3 (different DOM hash), but no extraction happens.
+
+---
 
 ### Other commands
 
 ```bash
-# Crawl a live URL
+# Crawl a live URL (requires Playwright browser installed)
 crawler crawl https://example.com/product/123
 
 # Crawl a local HTML file
 crawler local product_v1.html
 
-# Show cache + DB statistics
+# Show cache and DB statistics
 crawler stats
 
-# Override schema name
+# Override the schema name
 crawler demo --schema product_v2
 
-# Adjust log level
+# Verbose logging
 crawler --log-level DEBUG demo
 ```
 
+---
+
 ### Configuration
 
-All settings are overridable via environment variables (prefix: `CRAWLER_`):
+All settings have sensible defaults and can be overridden via environment variables (prefix: `CRAWLER_`) or in your `.env` file:
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-...         # Required
+# ── Required ───────────────────────────────────────────────────────
+ANTHROPIC_API_KEY=sk-ant-...
 
-CRAWLER_LLM_MODEL=claude-sonnet-4-6
-CRAWLER_LLM_MAX_HTML_CHARS=15000
-CRAWLER_LLM_RETRY_ATTEMPTS=3
+# ── LLM ────────────────────────────────────────────────────────────
+CRAWLER_LLM_MODEL=claude-sonnet-4-6       # Claude model to use
+CRAWLER_LLM_MAX_HTML_CHARS=15000          # HTML chars sent to LLM per request
+CRAWLER_LLM_RETRY_ATTEMPTS=3             # Retries on rate-limit / network error
 
+# ── Cache ───────────────────────────────────────────────────────────
 CRAWLER_CACHE_PATH=/tmp/crawler_selector_cache.json
-CRAWLER_CACHE_TTL_SECONDS=604800      # 7 days
-CRAWLER_CACHE_NULL_RATE_THRESHOLD=0.25
+CRAWLER_CACHE_TTL_SECONDS=604800          # Selector TTL — 7 days
+CRAWLER_CACHE_NULL_RATE_THRESHOLD=0.25   # Auto-invalidate above 25% null rate
+CRAWLER_CACHE_NULL_RATE_MIN_SAMPLES=5    # Minimum samples before auto-invalidation
 
-CRAWLER_STRUCTURAL_DRIFT_THRESHOLD=0.85
-CRAWLER_VISUAL_DRIFT_THRESHOLD=0.80
+# ── Change detection ─────────────────────────────────────────────────
+CRAWLER_STRUCTURAL_DRIFT_THRESHOLD=0.85  # Jaccard similarity below this → drift
+CRAWLER_VISUAL_DRIFT_THRESHOLD=0.80      # pHash Hamming similarity below this → drift
 
+# ── Storage ──────────────────────────────────────────────────────────
 CRAWLER_DB_PATH=/tmp/crawler_data.db
-CRAWLER_SCHEMA_NAME=product_v1
-CRAWLER_BROWSER_HEADLESS=true
+
+# ── Schema / extraction ───────────────────────────────────────────────
+CRAWLER_SCHEMA_NAME=product_v1           # Schema used as cache namespace
+
+# ── Browser ───────────────────────────────────────────────────────────
+CRAWLER_BROWSER_HEADLESS=true            # Set false to watch the browser open
 ```
 
 ---
