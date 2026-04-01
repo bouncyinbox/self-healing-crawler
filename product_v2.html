@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TechGear Pro X500 | MockShop 2.0</title>
+    <style>
+        /* COMPLETE REDESIGN — all IDs removed, new CSS classes, new structure */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #f0f0f0; }
+        .nav-bar { background: #111; padding: 18px 40px; border-bottom: 1px solid #222; }
+        .nav-bar span { color: #00d4ff; font-size: 20px; font-weight: bold; }
+        .pdp-wrapper { max-width: 1200px; margin: 40px auto; display: grid; 
+                        grid-template-columns: 1fr 1fr; gap: 48px; padding: 0 24px; }
+        .gallery-section { background: #1a1a1a; border-radius: 12px; padding: 24px;
+                            display: flex; align-items: center; justify-content: center;
+                            min-height: 400px; color: #555; font-size: 16px; }
+        .info-panel { display: flex; flex-direction: column; gap: 20px; }
+        .manufacturer-tag { font-size: 11px; color: #00d4ff; letter-spacing: 2px; 
+                             text-transform: uppercase; }
+        .item-headline { font-size: 28px; font-weight: 700; line-height: 1.25; color: #fff; }
+        .score-section { display: flex; align-items: center; gap: 8px; }
+        .score-value { font-size: 16px; font-weight: 600; color: #ffd700; }
+        .score-total { font-size: 13px; color: #888; }
+        .purchase-card { background: #1a1a1a; border: 1px solid #2a2a2a; 
+                          border-radius: 12px; padding: 24px; }
+        .amount-display { font-size: 42px; font-weight: 800; color: #00d4ff; }
+        .availability-badge { display: inline-block; padding: 6px 14px; border-radius: 20px;
+                               font-size: 13px; font-weight: 600; margin-top: 12px; }
+        .availability-badge.available { background: #0d3d1f; color: #2ecc71; border: 1px solid #2ecc71; }
+        .availability-badge.unavailable { background: #3d0d0d; color: #e74c3c; }
+        .product-ref { font-size: 11px; color: #555; }
+        .item-summary { font-size: 15px; line-height: 1.8; color: #bbb; }
+        .cta-row { display: flex; gap: 12px; }
+        .btn-primary { flex: 1; background: #00d4ff; color: #000; border: none;
+                        padding: 18px; font-size: 16px; font-weight: 700; 
+                        border-radius: 8px; cursor: pointer; }
+        .btn-secondary { background: transparent; color: #00d4ff; border: 2px solid #00d4ff;
+                          padding: 18px 24px; border-radius: 8px; cursor: pointer; }
+        .vendor-line { font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+
+<nav class="nav-bar">
+    <span>MockShop 2.0 ✦</span>
+</nav>
+
+<div class="pdp-wrapper">
+
+    <div class="gallery-section">
+        [Product Gallery Placeholder]
+    </div>
+
+    <div class="info-panel">
+
+        <div>
+            <!-- ALL ids removed. Classes renamed. Structure changed. -->
+            <p class="manufacturer-tag">TechGear</p>
+            <h1 class="item-headline">TechGear Pro X500 Wireless Noise-Cancelling Headphones</h1>
+        </div>
+
+        <div class="score-section">
+            <span class="score-value">4.7</span>
+            <span>★★★★★</span>
+            <span class="score-total">2,847 ratings</span>
+        </div>
+
+        <div class="purchase-card">
+            <div class="amount-display">$299.99</div>
+            <div>
+                <span class="availability-badge available">In Stock</span>
+            </div>
+            <p class="product-ref" style="margin-top:12px;">Ref: TG-X500-BLK</p>
+        </div>
+
+        <p class="vendor-line">Sold and fulfilled by <strong>TechGear Official</strong></p>
+
+        <p class="item-summary">
+            Experience studio-quality sound anywhere with the TechGear Pro X500. 
+            Featuring 40mm dynamic drivers, 30-hour battery life, and adaptive 
+            noise cancellation that learns your environment. Bluetooth 5.3 with 
+            multipoint connection — pair to two devices simultaneously.
+        </p>
+
+        <div class="cta-row">
+            <button class="btn-primary">Add to Cart</button>
+            <button class="btn-secondary">♡</button>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "self-healing-crawler"
+version = "0.2.0"
+description = "Self-healing web crawler with LLM-powered selector regeneration"
+requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.44.0",
+    "anthropic>=0.28.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.4.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "imagehash>=4.3.1",
+    "Pillow>=10.0.0",
+    "aiosqlite>=0.20.0",
+    "aiohttp>=3.9.0",
+    "aiofiles>=23.0.0",
+    "rich>=13.0.0",
+    "click>=8.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.14.0",
+    "coverage>=7.0.0",
+]
+
+[project.scripts]
+crawler = "crawler.main:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["crawler"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["crawler"]
+omit = ["tests/*"]
