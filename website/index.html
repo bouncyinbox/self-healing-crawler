@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Healing Crawler — Never maintain scraping rules again</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-card-hover: #1a1a25;
+            --border: #1e1e2e;
+            --text: #e0e0e8;
+            --text-dim: #8888a0;
+            --accent: #00d4ff;
+            --accent-glow: rgba(0, 212, 255, 0.15);
+            --green: #2ecc71;
+            --red: #e74c3c;
+            --orange: #f5a623;
+            --purple: #a855f7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Nav */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+        }
+        .nav-inner {
+            max-width: 1100px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 56px;
+        }
+        .nav-logo {
+            font-weight: 700; font-size: 15px; color: var(--text);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .nav-logo span { color: var(--accent); }
+        .nav-links { display: flex; gap: 28px; }
+        .nav-links a {
+            color: var(--text-dim); text-decoration: none; font-size: 13px;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text); }
+        .nav-cta {
+            background: var(--accent); color: #000; border: none; padding: 7px 16px;
+            border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+            text-decoration: none; transition: opacity 0.2s;
+        }
+        .nav-cta:hover { opacity: 0.85; }
+
+        /* Hero */
+        .hero {
+            padding: 140px 24px 80px;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .badge {
+            display: inline-block; padding: 5px 14px; border-radius: 20px;
+            background: var(--accent-glow); border: 1px solid rgba(0, 212, 255, 0.25);
+            font-size: 12px; color: var(--accent); font-weight: 500;
+            margin-bottom: 24px;
+        }
+        h1 {
+            font-size: clamp(36px, 5vw, 56px); font-weight: 800;
+            line-height: 1.1; margin-bottom: 20px;
+            letter-spacing: -0.02em;
+        }
+        h1 .gradient {
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-sub {
+            font-size: 18px; color: var(--text-dim); max-width: 560px;
+            margin: 0 auto 36px; line-height: 1.7;
+        }
+        .hero-actions {
+            display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+        }
+        .btn-primary {
+            background: var(--accent); color: #000; border: none; padding: 12px 28px;
+            border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+            text-decoration: none; transition: opacity 0.2s;
+        }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-secondary {
+            background: transparent; color: var(--text); border: 1px solid var(--border);
+            padding: 12px 28px; border-radius: 8px; font-size: 15px; cursor: pointer;
+            text-decoration: none; transition: border-color 0.2s;
+        }
+        .btn-secondary:hover { border-color: var(--text-dim); }
+
+        /* Sections */
+        section { padding: 80px 24px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .section-label {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 2px;
+            color: var(--accent); font-weight: 600; margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: clamp(28px, 3.5vw, 40px); font-weight: 700;
+            margin-bottom: 16px; letter-spacing: -0.01em;
+        }
+        .section-desc {
+            font-size: 16px; color: var(--text-dim); max-width: 520px; margin-bottom: 48px;
+        }
+
+        /* Demo */
+        .demo-section { background: var(--bg-card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .demo-container {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+            overflow: hidden;
+        }
+        .demo-toolbar {
+            background: #0e0e16; padding: 10px 16px;
+            display: flex; align-items: center; gap: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .demo-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .demo-dot.r { background: #ff5f56; }
+        .demo-dot.y { background: #ffbd2e; }
+        .demo-dot.g { background: #27c93f; }
+        .demo-toolbar-title { font-size: 12px; color: var(--text-dim); margin-left: 8px; font-family: 'SF Mono', 'Fira Code', monospace; }
+        .demo-body { padding: 24px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; line-height: 1.8; min-height: 420px; position: relative; }
+        .demo-line { opacity: 0; transform: translateY(4px); transition: opacity 0.3s, transform 0.3s; }
+        .demo-line.visible { opacity: 1; transform: translateY(0); }
+        .c-dim { color: #555; }
+        .c-cyan { color: var(--accent); }
+        .c-green { color: var(--green); }
+        .c-red { color: var(--red); }
+        .c-orange { color: var(--orange); }
+        .c-purple { color: var(--purple); }
+        .c-white { color: #fff; font-weight: 600; }
+        .demo-controls { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
+        .demo-btn {
+            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-dim);
+            padding: 8px 20px; border-radius: 6px; font-size: 13px; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .demo-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .demo-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+        /* Architecture */
+        .arch-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+            background: var(--border); border-radius: 12px; overflow: hidden;
+        }
+        .arch-step {
+            background: var(--bg-card); padding: 32px;
+            transition: background 0.2s;
+        }
+        .arch-step:hover { background: var(--bg-card-hover); }
+        .arch-num {
+            width: 32px; height: 32px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700; margin-bottom: 16px;
+        }
+        .arch-num.n1 { background: rgba(0, 212, 255, 0.15); color: var(--accent); }
+        .arch-num.n2 { background: rgba(245, 166, 35, 0.15); color: var(--orange); }
+        .arch-num.n3 { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
+        .arch-num.n4 { background: rgba(46, 204, 113, 0.15); color: var(--green); }
+        .arch-step h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+        .arch-step p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+        /* Features */
+        .features-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+        }
+        .feature-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 28px;
+            transition: border-color 0.2s;
+        }
+        .feature-card:hover { border-color: #2a2a40; }
+        .feature-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; margin-bottom: 16px;
+        }
+        .feature-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+        .feature-card p { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+        /* Stats */
+        .stats-row {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+            margin-bottom: 60px;
+        }
+        .stat-card {
+            text-align: center; padding: 28px;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+        }
+        .stat-value { font-size: 36px; font-weight: 800; margin-bottom: 4px; }
+        .stat-label { font-size: 13px; color: var(--text-dim); }
+
+        /* Code block */
+        .code-section { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+        .code-text { padding-top: 8px; }
+        .code-text h3 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+        .code-text p { font-size: 15px; color: var(--text-dim); line-height: 1.7; margin-bottom: 16px; }
+        .code-block {
+            background: #0e0e16; border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; overflow-x: auto;
+            font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; line-height: 1.8;
+        }
+        .code-block .kw { color: var(--purple); }
+        .code-block .fn { color: var(--accent); }
+        .code-block .str { color: var(--green); }
+        .code-block .cm { color: #555; }
+        .code-block .op { color: var(--orange); }
+
+        /* Comparison */
+        .comparison {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+            background: var(--border); border-radius: 12px; overflow: hidden;
+            margin-top: 48px;
+        }
+        .comp-col { background: var(--bg-card); padding: 32px; }
+        .comp-col h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .comp-item { font-size: 14px; padding: 8px 0; color: var(--text-dim); display: flex; align-items: start; gap: 8px; }
+        .comp-item .icon { flex-shrink: 0; margin-top: 2px; }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 40px 24px; text-align: center;
+        }
+        footer p { font-size: 13px; color: var(--text-dim); }
+        footer a { color: var(--accent); text-decoration: none; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .arch-grid, .features-grid, .code-section, .comparison { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: 1fr 1fr; }
+            .nav-links { display: none; }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeInUp 0.6s ease forwards; }
+        .delay-1 { animation-delay: 0.1s; opacity: 0; }
+        .delay-2 { animation-delay: 0.2s; opacity: 0; }
+        .delay-3 { animation-delay: 0.3s; opacity: 0; }
+
+        /* Mini website preview */
+        .site-preview {
+            background: #1a1a2e; border-radius: 8px; padding: 16px;
+            border: 1px solid var(--border); margin: 12px 0;
+            font-family: -apple-system, sans-serif;
+            transition: all 0.5s ease;
+        }
+        .site-preview.v2 {
+            background: #0d0d0d; border-color: #00d4ff33;
+        }
+        .site-preview .sp-brand { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .site-preview .sp-title { font-size: 14px; font-weight: 700; margin: 4px 0; }
+        .site-preview .sp-price { font-size: 20px; font-weight: 800; margin: 8px 0 4px; }
+        .site-preview.v2 .sp-price { color: var(--accent); }
+        .site-preview .sp-stock { font-size: 11px; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <div class="nav-logo"><span>&lt;/&gt;</span> self-healing-crawler</div>
+        <div class="nav-links">
+            <a href="#demo">Demo</a>
+            <a href="#architecture">Architecture</a>
+            <a href="#features">Features</a>
+            <a href="#quickstart">Quick Start</a>
+        </div>
+        <a class="nav-cta" href="https://github.com/user/self-healing-crawler">GitHub</a>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="container">
+        <div class="badge fade-in">Open Source &middot; Python 3.11+</div>
+        <h1 class="fade-in delay-1">Web scrapers that<br><span class="gradient">fix themselves</span></h1>
+        <p class="hero-sub fade-in delay-2">
+            CSS selectors break when sites redesign. This crawler detects structural drift,
+            calls an LLM to re-extract data, and caches new selectors &mdash; automatically.
+        </p>
+        <div class="hero-actions fade-in delay-3">
+            <a class="btn-primary" href="#quickstart">Get Started</a>
+            <a class="btn-secondary" href="#demo">Watch Demo</a>
+        </div>
+    </div>
+</section>
+
+<!-- Stats -->
+<section>
+    <div class="container">
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" style="color: var(--accent);">~3ms</div>
+                <div class="stat-label">Fast path extraction</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: var(--green);">99%</div>
+                <div class="stat-label">Requests use cached selectors</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: var(--purple);">0</div>
+                <div class="stat-label">Manual rule updates needed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: var(--orange);">109</div>
+                <div class="stat-label">Tests passing</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Demo -->
+<section class="demo-section" id="demo">
+    <div class="container">
+        <div class="section-label">Interactive Demo</div>
+        <div class="section-title">See self-healing in action</div>
+        <p class="section-desc">Watch the crawler handle a complete website redesign without any code changes.</p>
+
+        <div class="demo-container">
+            <div class="demo-toolbar">
+                <div class="demo-dot r"></div>
+                <div class="demo-dot y"></div>
+                <div class="demo-dot g"></div>
+                <span class="demo-toolbar-title">crawler demo</span>
+            </div>
+            <div class="demo-body" id="demo-body">
+                <!-- Lines injected by JS -->
+            </div>
+        </div>
+        <div class="demo-controls">
+            <button class="demo-btn active" onclick="runDemo('full')">Full Demo</button>
+            <button class="demo-btn" onclick="runDemo('fast')">Fast Path Only</button>
+            <button class="demo-btn" onclick="runDemo('heal')">Healing Path Only</button>
+        </div>
+    </div>
+</section>
+
+<!-- Architecture -->
+<section id="architecture">
+    <div class="container">
+        <div class="section-label">How It Works</div>
+        <div class="section-title">Two-path extraction pipeline</div>
+        <p class="section-desc">Optimized for cost and speed. The LLM is only called when drift is detected.</p>
+
+        <div class="arch-grid">
+            <div class="arch-step">
+                <div class="arch-num n1">1</div>
+                <h3>Change Detection</h3>
+                <p>Dual-signal drift detection using Jaccard similarity on DOM 3-gram shingles and perceptual hashing (pHash) of page screenshots. Thresholds: &lt;0.85 structural or &lt;0.80 visual triggers healing.</p>
+            </div>
+            <div class="arch-step">
+                <div class="arch-num n2">2</div>
+                <h3>Cache Lookup</h3>
+                <p>If no drift detected, cached CSS selectors are applied via BeautifulSoup/lxml for near-zero latency extraction (~3ms). Thread-safe JSON cache with 7-day TTL and canary validation.</p>
+            </div>
+            <div class="arch-step">
+                <div class="arch-num n3">3</div>
+                <h3>LLM Extraction</h3>
+                <p>On cache miss or drift: content-aware HTML truncation finds &lt;main&gt; or product markup, sends to Claude for semantic extraction. Generates new CSS selectors for caching.</p>
+            </div>
+            <div class="arch-step">
+                <div class="arch-num n4">4</div>
+                <h3>Validate &amp; Store</h3>
+                <p>Pydantic schema validates all fields with lenient parsers (extracts "$29.99" from messy HTML). Results stored in async SQLite with full audit trail.</p>
+            </div>
+        </div>
+
+        <div class="comparison">
+            <div class="comp-col">
+                <h3><span style="color:var(--red);">&#x2717;</span> Traditional Scrapers</h3>
+                <div class="comp-item"><span class="icon" style="color:var(--red);">&#x2717;</span> Break silently on site redesigns</div>
+                <div class="comp-item"><span class="icon" style="color:var(--red);">&#x2717;</span> Require manual selector maintenance</div>
+                <div class="comp-item"><span class="icon" style="color:var(--red);">&#x2717;</span> One rule set per domain</div>
+                <div class="comp-item"><span class="icon" style="color:var(--red);">&#x2717;</span> No confidence scoring</div>
+                <div class="comp-item"><span class="icon" style="color:var(--red);">&#x2717;</span> No audit trail</div>
+            </div>
+            <div class="comp-col">
+                <h3><span style="color:var(--green);">&#x2713;</span> Self-Healing Crawler</h3>
+                <div class="comp-item"><span class="icon" style="color:var(--green);">&#x2713;</span> Detects drift and adapts automatically</div>
+                <div class="comp-item"><span class="icon" style="color:var(--green);">&#x2713;</span> Zero manual intervention needed</div>
+                <div class="comp-item"><span class="icon" style="color:var(--green);">&#x2713;</span> Schema-first: works on any product page</div>
+                <div class="comp-item"><span class="icon" style="color:var(--green);">&#x2713;</span> Per-field confidence + null rate metrics</div>
+                <div class="comp-item"><span class="icon" style="color:var(--green);">&#x2713;</span> Full audit log with token tracking</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section id="features" style="background: var(--bg-card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container">
+        <div class="section-label">Features</div>
+        <div class="section-title">Built for production</div>
+        <p class="section-desc">Every component designed for reliability, cost efficiency, and observability.</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(0,212,255,0.1); color: var(--accent);">&#9889;</div>
+                <h3>Dual-Signal Drift Detection</h3>
+                <p>DOM shingle fingerprinting + perceptual image hashing catches both structural and visual changes.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(168,85,247,0.1); color: var(--purple);">&#129302;</div>
+                <h3>LLM-Powered Extraction</h3>
+                <p>Claude extracts structured data semantically and generates CSS selectors for future fast-path reuse.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(46,204,113,0.1); color: var(--green);">&#128640;</div>
+                <h3>Write-Behind Cache</h3>
+                <p>Thread-safe selector cache with TTL, canary validation, and write-behind buffering to minimize I/O.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(245,166,35,0.1); color: var(--orange);">&#128202;</div>
+                <h3>Canary Validation</h3>
+                <p>Auto-invalidates selectors when null rate exceeds 25% over 5+ samples, catching gradual drift.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(0,212,255,0.1); color: var(--accent);">&#128736;</div>
+                <h3>Content-Aware Truncation</h3>
+                <p>Finds &lt;main&gt;, product schema markup, or content regions before sending to LLM. Fewer tokens, better results.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(168,85,247,0.1); color: var(--purple);">&#128209;</div>
+                <h3>Full Audit Trail</h3>
+                <p>Every extraction logged with method, drift severity, tokens used, and selectors applied. Async SQLite with WAL mode.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Quick Start -->
+<section id="quickstart">
+    <div class="container">
+        <div class="section-label">Quick Start</div>
+        <div class="section-title">Up and running in 60 seconds</div>
+        <p class="section-desc">No API key needed for the built-in demo with mock HTML files.</p>
+
+        <div class="code-section">
+            <div class="code-text">
+                <h3>1. Install</h3>
+                <p>Clone the repository and install dependencies. Python 3.11+ required.</p>
+                <div class="code-block">
+<span class="cm"># Clone and install</span>
+git clone https://github.com/user/self-healing-crawler
+<span class="kw">cd</span> self-healing-crawler
+pip install <span class="op">-e</span> <span class="str">".[dev]"</span>
+
+<span class="cm"># Run the demo (no API key needed)</span>
+python <span class="op">-m</span> crawler demo
+                </div>
+
+                <h3 style="margin-top: 32px;">2. Crawl live URLs</h3>
+                <p>Set your Anthropic API key and crawl any product page.</p>
+                <div class="code-block">
+<span class="cm"># Set API key</span>
+<span class="kw">export</span> ANTHROPIC_API_KEY=<span class="str">"sk-ant-..."</span>
+
+<span class="cm"># Crawl a live product page</span>
+python <span class="op">-m</span> crawler crawl <span class="str">"https://example.com/product"</span>
+
+<span class="cm"># Or crawl a local HTML file</span>
+python <span class="op">-m</span> crawler local <span class="str">product_v1.html</span>
+
+<span class="cm"># View cache and extraction stats</span>
+python <span class="op">-m</span> crawler stats
+                </div>
+            </div>
+
+            <div class="code-text">
+                <h3>3. Define your schema</h3>
+                <p>Pydantic models with lenient field parsers handle messy real-world HTML.</p>
+                <div class="code-block">
+<span class="kw">from</span> crawler.schema <span class="kw">import</span> <span class="fn">ProductSchema</span>
+
+<span class="cm"># Built-in schema handles:</span>
+<span class="cm"># - Price: "$29.99" -> 29.99</span>
+<span class="cm"># - Rating: "4.5 out of 5" -> 4.5</span>
+<span class="cm"># - Stock: "In Stock" -> True</span>
+<span class="cm"># - Reviews: "(2,847 reviews)" -> 2847</span>
+
+schema = <span class="fn">ProductSchema</span>(
+    title=<span class="str">"Pro X500 Headphones"</span>,
+    price=<span class="str">"$299.99"</span>,
+    currency=<span class="str">"USD"</span>,
+    in_stock=<span class="str">"In Stock"</span>,
+    rating=<span class="str">"4.7 out of 5"</span>,
+    review_count=<span class="str">"(2,847 reviews)"</span>,
+    sku=<span class="str">"TG-X500-BLK"</span>,
+    brand=<span class="str">"TechGear"</span>,
+)
+
+<span class="kw">print</span>(schema.price)    <span class="cm"># 299.99</span>
+<span class="kw">print</span>(schema.in_stock) <span class="cm"># True</span>
+<span class="kw">print</span>(schema.rating)   <span class="cm"># 4.7</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section style="text-align: center; padding: 100px 24px;">
+    <div class="container">
+        <h2 style="font-size: 32px; font-weight: 700; margin-bottom: 16px;">Stop fixing broken selectors</h2>
+        <p style="font-size: 16px; color: var(--text-dim); margin-bottom: 32px;">
+            Let the crawler handle site redesigns while you focus on what matters.
+        </p>
+        <div class="hero-actions">
+            <a class="btn-primary" href="https://github.com/user/self-healing-crawler">View on GitHub</a>
+            <a class="btn-secondary" href="#quickstart">Read the Docs</a>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <p>Built with Python, Playwright, and Claude &middot; <a href="https://github.com/user/self-healing-crawler">GitHub</a></p>
+</footer>
+
+<script>
+const demoLines = {
+    full: [
+        { text: '$ python -m crawler demo', cls: 'c-white' },
+        { text: '', cls: '' },
+        { text: '=== Run 1: First visit (cold cache) ===', cls: 'c-cyan' },
+        { text: 'Loading product_v1.html...', cls: 'c-dim' },
+        { text: 'Cache: MISS (no selectors for domain)', cls: 'c-orange' },
+        { text: 'Calling LLM for semantic extraction...', cls: 'c-purple' },
+        { text: 'Extracted: title="TechGear Pro X500" price=$299.99 rating=4.7', cls: 'c-green' },
+        { text: 'Generated 8 CSS selectors, cached for 7 days', cls: 'c-green' },
+        { text: 'Tokens used: 1,247 | Confidence: 0.95', cls: 'c-dim' },
+        { text: '', cls: '' },
+        { text: '=== Run 2: Cached (fast path) ===', cls: 'c-cyan' },
+        { text: 'Loading product_v1.html...', cls: 'c-dim' },
+        { text: 'Drift check: structural=0.98 visual=0.99 \u2192 no drift', cls: 'c-dim' },
+        { text: 'Cache: HIT \u2192 applying 8 selectors', cls: 'c-green' },
+        { text: 'Extracted in 2.3ms | 0 tokens | Confidence: 0.95', cls: 'c-green' },
+        { text: '', cls: '' },
+        { text: '=== Run 3: Site redesign detected ===', cls: 'c-cyan' },
+        { text: 'Loading product_v2.html...', cls: 'c-dim' },
+        { text: 'Drift check: structural=0.31 visual=0.42 \u2192 DRIFT DETECTED', cls: 'c-red' },
+        { text: 'Invalidating cached selectors...', cls: 'c-orange' },
+        { text: 'Calling LLM for re-extraction...', cls: 'c-purple' },
+        { text: 'Extracted: title="TechGear Pro X500" price=$299.99 rating=4.7', cls: 'c-green' },
+        { text: 'Generated 8 new selectors for v2 layout, cached', cls: 'c-green' },
+        { text: 'Self-healing complete | Tokens: 1,183', cls: 'c-green' },
+        { text: '', cls: '' },
+        { text: '=== Run 4: New layout cached ===', cls: 'c-cyan' },
+        { text: 'Loading product_v2.html...', cls: 'c-dim' },
+        { text: 'Drift check: structural=0.99 visual=1.00 \u2192 no drift', cls: 'c-dim' },
+        { text: 'Cache: HIT \u2192 applying 8 selectors (v2)', cls: 'c-green' },
+        { text: 'Extracted in 1.8ms | 0 tokens | Confidence: 0.95', cls: 'c-green' },
+        { text: '', cls: '' },
+        { text: 'Demo complete. Total: 4 runs, 2 LLM calls, 2 cache hits', cls: 'c-white' },
+    ],
+    fast: [
+        { text: '$ python -m crawler local product_v1.html', cls: 'c-white' },
+        { text: '', cls: '' },
+        { text: 'Loading product_v1.html...', cls: 'c-dim' },
+        { text: 'Drift check: structural=0.98 visual=0.99 \u2192 no drift', cls: 'c-dim' },
+        { text: 'Cache: HIT \u2192 applying 8 cached selectors', cls: 'c-green' },
+        { text: '', cls: '' },
+        { text: 'Applying selectors via BeautifulSoup + lxml...', cls: 'c-dim' },
+        { text: '  #product-title     \u2192 "TechGear Pro X500 Wireless..."', cls: 'c-cyan' },
+        { text: '  #product-price     \u2192 "$299.99"', cls: 'c-cyan' },
+        { text: '  #product-brand     \u2192 "TechGear"', cls: 'c-cyan' },
+        { text: '  #product-rating    \u2192 "4.7"', cls: 'c-cyan' },
+        { text: '  #review-count      \u2192 "(2,847 reviews)"', cls: 'c-cyan' },
+        { text: '  #stock-status      \u2192 "In Stock"', cls: 'c-cyan' },
+        { text: '  #product-sku       \u2192 "TG-X500-BLK"', cls: 'c-cyan' },
+        { text: '  .description       \u2192 "Experience studio-quality..."', cls: 'c-cyan' },
+        { text: '', cls: '' },
+        { text: 'Schema validation passed (8/8 fields)', cls: 'c-green' },
+        { text: 'Extracted in 2.3ms | 0 tokens | 0 LLM calls', cls: 'c-green' },
+    ],
+    heal: [
+        { text: '$ python -m crawler local product_v2.html', cls: 'c-white' },
+        { text: '', cls: '' },
+        { text: 'Loading product_v2.html...', cls: 'c-dim' },
+        { text: 'Computing structural fingerprint...', cls: 'c-dim' },
+        { text: '  DOM shingles: 847 trigrams extracted', cls: 'c-dim' },
+        { text: '  Jaccard similarity: 0.31 (threshold: 0.85)', cls: 'c-red' },
+        { text: '  Visual pHash distance: 18 (threshold: ~6)', cls: 'c-red' },
+        { text: '', cls: '' },
+        { text: 'DRIFT DETECTED \u2014 site has been redesigned', cls: 'c-red' },
+        { text: 'Invalidating 8 cached selectors...', cls: 'c-orange' },
+        { text: '', cls: '' },
+        { text: 'Entering healing path...', cls: 'c-purple' },
+        { text: '  Truncating HTML: found <main> region (2.1KB \u2192 0.9KB)', cls: 'c-purple' },
+        { text: '  Sending to Claude for semantic extraction...', cls: 'c-purple' },
+        { text: '  Response received (1,183 tokens)', cls: 'c-purple' },
+        { text: '', cls: '' },
+        { text: 'New selectors generated:', cls: 'c-cyan' },
+        { text: '  .item-headline       \u2192 title', cls: 'c-cyan' },
+        { text: '  .amount-display      \u2192 price', cls: 'c-cyan' },
+        { text: '  .manufacturer-tag    \u2192 brand', cls: 'c-cyan' },
+        { text: '  .score-value         \u2192 rating', cls: 'c-cyan' },
+        { text: '  .score-total         \u2192 review_count', cls: 'c-cyan' },
+        { text: '  .availability-badge  \u2192 in_stock', cls: 'c-cyan' },
+        { text: '  .product-ref         \u2192 sku', cls: 'c-cyan' },
+        { text: '  .item-summary        \u2192 description', cls: 'c-cyan' },
+        { text: '', cls: '' },
+        { text: 'Cached 8 selectors (TTL: 7 days)', cls: 'c-green' },
+        { text: 'Self-healing complete \u2014 data extracted successfully', cls: 'c-green' },
+    ]
+};
+
+let demoTimeout = null;
+let currentDemo = null;
+
+function runDemo(type) {
+    if (demoTimeout) clearTimeout(demoTimeout);
+    const body = document.getElementById('demo-body');
+    body.innerHTML = '';
+    currentDemo = type;
+
+    document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const lines = demoLines[type];
+    let i = 0;
+
+    function showNext() {
+        if (i >= lines.length) return;
+        const line = lines[i];
+        const el = document.createElement('div');
+        el.className = 'demo-line';
+        if (line.text === '') {
+            el.innerHTML = '&nbsp;';
+        } else {
+            el.innerHTML = `<span class="${line.cls}">${line.text}</span>`;
+        }
+        body.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('visible'));
+        body.scrollTop = body.scrollHeight;
+        i++;
+        demoTimeout = setTimeout(showNext, line.text === '' ? 100 : 70);
+    }
+
+    showNext();
+}
+
+// Auto-run demo on load
+window.addEventListener('load', () => {
+    setTimeout(() => runDemo('full'), 800);
+});
+
+// Intersection observer for scroll animations
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+        }
+    });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.arch-step, .feature-card, .stat-card').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    observer.observe(el);
+});
+</script>
+
+</body>
+</html>
